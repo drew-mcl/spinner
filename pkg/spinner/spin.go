@@ -76,6 +76,26 @@ func (s *Spinner) Stop() {
 	s.Status = fmt.Sprintf("✔ %s", gray(s.DoneMsg))
 }
 
+func (s *Spinner) StopWithStatus(status string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.active = false
+	s.Status = ""
+
+	var symbol string
+
+	switch status {
+	case "success":
+		symbol = color.New(color.FgGreen).Sprint("✔")
+	case "failure":
+		symbol = color.New(color.FgRed).Sprint("✘")
+	case "disruption":
+		symbol = color.New(color.FgYellow).Sprint("!")
+	}
+
+	s.Status = fmt.Sprintf("%s %s", symbol, s.DoneMsg)
+}
+
 type SpinnerManager struct {
 	spinners []*Spinner
 	mu       sync.Mutex
@@ -120,7 +140,9 @@ func (sm *SpinnerManager) StartGroup() {
 			for _, s := range sm.spinners {
 				s.mu.Lock()
 				clearCurrentLine()
-				fmt.Println(s.Status)
+				if s.Status != "" {
+					fmt.Println(s.Status)
+				}
 				s.mu.Unlock()
 			}
 			sm.mu.Unlock()

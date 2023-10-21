@@ -18,13 +18,16 @@ func main() {
 	sm.StartGroup()
 
 	time.Sleep(3 * time.Second)
-	s1.Stop()
+	s1.StopWithStatus("success")
 
 	time.Sleep(2 * time.Second)
-	s2.Stop()
+	s2.StopWithStatus("failure")
 
 	time.Sleep(1 * time.Second)
-	s3.Stop()
+	s3.StopWithStatus("disruption")
+
+	//Required to get the last symbol to render, will move out once made async and non-blocking
+	time.Sleep(200 * time.Millisecond)
 
 	fmt.Println("--------------------")
 	fmt.Println("Some stuff after the spinner group")
