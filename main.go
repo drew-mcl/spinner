@@ -2,33 +2,41 @@ package main
 
 import (
 	"fmt"
-	"spinner/pkg/spinner" // replace with the actual path
+	"math/rand"
+	"spinner/pkg/spinner"
 	"time"
 )
 
+func goSomething(sp *spinner.Spinner, duration time.Duration) {
+	// Simulate a long-running task
+	time.Sleep(duration)
+	sp.Stop()
+}
+
 func main() {
-	fmt.Println("Some stuff before the spinner group")
-	fmt.Println("--------------------")
 
+	fmt.Println("Some text before the spinners")
+	fmt.Println("----------------------------------------")
+
+	rand.Seed(time.Now().UnixNano())
 	sm := spinner.NewGroup()
-	s1 := sm.NewSpinner("Loading...", "Done")
-	s2 := sm.NewSpinner("Processing...", "Failed")
-	s3 := sm.NewSpinner("Warning...", "Disrupted")
 
+	numTasks := 5
+	for i := 1; i <= numTasks; i++ {
+		msg := fmt.Sprintf("Task %d", i)
+		doneMsg := fmt.Sprintf("Done %d", i)
+
+		randomDuration := time.Duration(rand.Intn(5)+1) * time.Second
+
+		sp := sm.NewSpinner(msg, doneMsg)
+		go goSomething(sp, randomDuration)
+	}
+
+	// Start the group of spinners
 	sm.StartGroup()
+	// Wait for all tasks to complete
+	sm.WaitForCompletion()
 
-	time.Sleep(3 * time.Second)
-	s1.StopWithStatus("success")
-
-	time.Sleep(2 * time.Second)
-	s2.StopWithStatus("failure")
-
-	time.Sleep(1 * time.Second)
-	s3.StopWithStatus("disruption")
-
-	//Required to get the last symbol to render, will move out once made async and non-blocking
-	time.Sleep(200 * time.Millisecond)
-
-	fmt.Println("--------------------")
-	fmt.Println("Some stuff after the spinner group")
+	fmt.Println("Some text after the spinners")
+	fmt.Println("----------------------------------------")
 }

@@ -93,13 +93,16 @@ func (s *Spinner) StopWithStatus(status string) {
 		symbol = color.New(color.FgYellow).Sprint("!")
 	}
 
-	s.Status = fmt.Sprintf("%s %s", symbol, s.DoneMsg)
+	gray := color.New(color.FgBlack).Add(color.Faint).SprintFunc()
+
+	s.Status = fmt.Sprintf("%s %s", symbol, gray(s.DoneMsg))
 }
 
 type SpinnerManager struct {
 	spinners []*Spinner
 	mu       sync.Mutex
 	started  bool
+	wg       sync.WaitGroup
 }
 
 func NewGroup() *SpinnerManager {
@@ -111,6 +114,22 @@ func (sm *SpinnerManager) NewSpinner(msg, doneMsg string) *Spinner {
 	sm.mu.Lock()
 	sm.spinners = append(sm.spinners, sp)
 	sm.mu.Unlock()
+
+	sm.wg.Add(1)
+
+	go func() {
+		for {
+			sp.mu.Lock()
+			if !sp.active {
+				sp.mu.Unlock()
+				sm.wg.Done()
+				return
+			}
+			sp.mu.Unlock()
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
 	return sp
 }
 
@@ -125,7 +144,7 @@ func (sm *SpinnerManager) StartGroup() {
 	sm.started = true
 
 	// Reserve space for spinners
-	for _ = range sm.spinners {
+	for range sm.spinners {
 		fmt.Println()
 	}
 
@@ -150,4 +169,9 @@ func (sm *SpinnerManager) StartGroup() {
 			time.Sleep(200 * time.Millisecond)
 		}
 	}()
+}
+
+func (sm *SpinnerManager) WaitForCompletion() {
+	sm.wg.Wait()
+	time.Sleep(200 * time.Millisecond)
 }
