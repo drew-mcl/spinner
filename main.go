@@ -3,40 +3,56 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"spinner/pkg/spinner"
+	"spinner/pkg/spinner" // replace with the correct import path
+	"sync"
 	"time"
 )
 
-func goSomething(sp *spinner.Spinner, duration time.Duration) {
-	// Simulate a long-running task
-	time.Sleep(duration)
-	sp.Stop()
-}
-
 func main() {
-
-	fmt.Println("Some text before the spinners")
-	fmt.Println("----------------------------------------")
-
-	rand.Seed(time.Now().UnixNano())
 	sm := spinner.NewGroup()
 
-	numTasks := 5
-	for i := 1; i <= numTasks; i++ {
-		msg := fmt.Sprintf("Task %d", i)
-		doneMsg := fmt.Sprintf("Done %d", i)
+	sp1 := sm.NewSpinner("Task 1", "Done 1")
+	sp2 := sm.NewSpinner("Task 2", "Done 2")
+	sp3 := sm.NewSpinner("Task 3", "Done 3")
+	sp4 := sm.NewSpinner("Task 4", "Done 4")
 
-		randomDuration := time.Duration(rand.Intn(5)+1) * time.Second
-
-		sp := sm.NewSpinner(msg, doneMsg)
-		go goSomething(sp, randomDuration)
-	}
-
-	// Start the group of spinners
 	sm.StartGroup()
-	// Wait for all tasks to complete
-	sm.WaitForCompletion()
 
-	fmt.Println("Some text after the spinners")
-	fmt.Println("----------------------------------------")
+	var wg sync.WaitGroup
+
+	wg.Add(4) // As there are 4 tasks
+
+	// Simulate tasks with random durations
+	go func() {
+		defer wg.Done()
+		time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+		sp1.Stop()
+	}()
+
+	go func() {
+		defer wg.Done()
+		time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+		sp2.StopWithStatus("success")
+	}()
+
+	go func() {
+		defer wg.Done()
+		time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+		sp3.StopWithStatus("failure")
+	}()
+
+	go func() {
+		defer wg.Done()
+		time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+		sp4.StopWithStatus("disruption")
+	}()
+
+	// Wait for all tasks to complete
+	wg.Wait()
+
+	// Stop the spinner group display
+	sm.StopGroup()
+
+	fmt.Println("Some terminal output")
+	fmt.Println("Now we go again")
 }

@@ -35,7 +35,7 @@ type Spinner struct {
 	DoneMsg   string
 	Status    string
 	spinChars []string
-	done      chan bool
+	stopCh    chan struct{}
 }
 
 func NewSpinner(msg, doneMsg string) *Spinner {
@@ -43,40 +43,42 @@ func NewSpinner(msg, doneMsg string) *Spinner {
 		spinChars: []string{"◐", "◓", "◑", "◒"},
 		Msg:       msg,
 		DoneMsg:   doneMsg,
-		done:      make(chan bool, 1),
 	}
 }
 
 func (s *Spinner) Start() {
-	s.mu.Lock()
+	s.mu.Lock() // Locking to avoid race conditions
 	s.active = true
+	s.stopCh = make(chan struct{})
 	s.mu.Unlock()
 
 	blue := color.New(color.FgBlue).SprintFunc()
 
 	go func() {
 		for {
-			for i := 0; i < len(s.spinChars); i++ {
+			select {
+			case <-s.stopCh:
+				return
+			default:
 				s.mu.Lock()
-				if !s.active {
-					s.mu.Unlock()
-					return
+				for i := 0; i < len(s.spinChars) && s.active; i++ { // added s.active check
+					s.Status = fmt.Sprintf("%s %s", blue(s.spinChars[i]), s.Msg)
+					time.Sleep(200 * time.Millisecond)
 				}
-				s.Status = fmt.Sprintf("%s %s", blue(s.spinChars[i]), s.Msg)
 				s.mu.Unlock()
-				time.Sleep(200 * time.Millisecond)
 			}
 		}
 	}()
 }
 
 func (s *Spinner) Stop() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.Lock() // Locking to ensure thread safety
 	s.active = false
 	gray := color.New(color.FgBlack).Add(color.Faint).SprintFunc()
 	s.Status = fmt.Sprintf("✔ %s", gray(s.DoneMsg))
-	s.done <- true
+	s.mu.Unlock()
+
+	close(s.stopCh) // Signal the spinner to stop
 }
 
 func (s *Spinner) StopWithStatus(status string) {
@@ -106,10 +108,16 @@ type SpinnerManager struct {
 	mu       sync.Mutex
 	started  bool
 	wg       sync.WaitGroup
+	doneCh   chan bool // To signal when all spinners are done
+	quit     chan bool // To signal the updating goroutine to stop
+
 }
 
 func NewGroup() *SpinnerManager {
-	return &SpinnerManager{}
+	return &SpinnerManager{
+		quit:   make(chan bool),
+		doneCh: make(chan bool),
+	}
 }
 
 func (sm *SpinnerManager) NewSpinner(msg, doneMsg string) *Spinner {
@@ -118,19 +126,14 @@ func (sm *SpinnerManager) NewSpinner(msg, doneMsg string) *Spinner {
 	sm.spinners = append(sm.spinners, sp)
 	sm.mu.Unlock()
 
-	sm.wg.Add(1)
-
 	go func() {
-		for {
-			sp.mu.Lock()
-			if !sp.active {
-				sp.mu.Unlock()
-				sm.wg.Done()
-				return
+		<-sp.stopCh
+		for _, spinner := range sm.spinners {
+			if spinner.active {
+				return // If any spinner is still active, return
 			}
-			sp.mu.Unlock()
-			time.Sleep(100 * time.Millisecond)
 		}
+		sm.doneCh <- true // If all spinners are done, signal doneCh
 	}()
 
 	return sp
@@ -145,42 +148,49 @@ func (sm *SpinnerManager) StartGroup() {
 	}
 
 	sm.started = true
-	hideCursor()
+	hideCursor() // Added hideCursor from the second code
 
 	for _, s := range sm.spinners {
 		s.Start()
 	}
 
-	firstDraw := true
+	firstDraw := true // Added the firstDraw logic from the second code
 	go func() {
 		for {
-			sm.mu.Lock()
-			for _, s := range sm.spinners {
-				s.mu.Lock()
-				clearCurrentLine()
-				if s.Status != "" {
-					fmt.Println(s.Status)
+			select {
+			case <-sm.quit: // Listen to quit signal
+				return
+			default:
+				sm.mu.Lock()
+				if !firstDraw {
+					moveCursorUp(len(sm.spinners))
 				}
-				s.mu.Unlock()
+				for _, s := range sm.spinners {
+					clearCurrentLine()
+					if s.Status != "" {
+						fmt.Println(s.Status)
+					} else {
+						// Print a placeholder for inactive spinners
+						fmt.Println()
+					}
+				}
+				sm.mu.Unlock()
+
+				if firstDraw {
+					firstDraw = false
+				}
+				time.Sleep(100 * time.Millisecond)
 			}
-			sm.mu.Unlock()
-			if !firstDraw {
-				moveCursorUp(len(sm.spinners))
-			} else {
-				firstDraw = false
-			}
-			time.Sleep(200 * time.Millisecond)
 		}
 	}()
 }
 
-func (sm *SpinnerManager) WaitForCompletion() {
-	for _, s := range sm.spinners {
-		<-s.done
-	}
-	for _, s := range sm.spinners {
-		fmt.Println(s.Status)
-	}
-	showCursor()
-	time.Sleep(200 * time.Millisecond)
+func (sm *SpinnerManager) StopGroup() {
+	time.Sleep(300 * time.Millisecond) // Sleep to allow the last update
+	sm.quit <- true                    // Signal to stop updating spinners
+	sm.ResetTerminal()
+}
+
+func (sm *SpinnerManager) ResetTerminal() {
+	showCursor() // Restore the cursor visibility
 }
