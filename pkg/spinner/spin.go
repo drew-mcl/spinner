@@ -35,6 +35,7 @@ type Spinner struct {
 	DoneMsg   string
 	Status    string
 	spinChars []string
+	done      chan bool
 }
 
 func NewSpinner(msg, doneMsg string) *Spinner {
@@ -42,6 +43,7 @@ func NewSpinner(msg, doneMsg string) *Spinner {
 		spinChars: []string{"◐", "◓", "◑", "◒"},
 		Msg:       msg,
 		DoneMsg:   doneMsg,
+		done:      make(chan bool, 1),
 	}
 }
 
@@ -74,6 +76,7 @@ func (s *Spinner) Stop() {
 	s.active = false
 	gray := color.New(color.FgBlack).Add(color.Faint).SprintFunc()
 	s.Status = fmt.Sprintf("✔ %s", gray(s.DoneMsg))
+	s.done <- true
 }
 
 func (s *Spinner) StopWithStatus(status string) {
@@ -142,19 +145,15 @@ func (sm *SpinnerManager) StartGroup() {
 	}
 
 	sm.started = true
-
-	// Reserve space for spinners
-	for range sm.spinners {
-		fmt.Println()
-	}
+	hideCursor()
 
 	for _, s := range sm.spinners {
 		s.Start()
 	}
 
+	firstDraw := true
 	go func() {
 		for {
-			moveCursorUp(len(sm.spinners))
 			sm.mu.Lock()
 			for _, s := range sm.spinners {
 				s.mu.Lock()
@@ -165,13 +164,23 @@ func (sm *SpinnerManager) StartGroup() {
 				s.mu.Unlock()
 			}
 			sm.mu.Unlock()
-			moveCursorDown(len(sm.spinners))
+			if !firstDraw {
+				moveCursorUp(len(sm.spinners))
+			} else {
+				firstDraw = false
+			}
 			time.Sleep(200 * time.Millisecond)
 		}
 	}()
 }
 
 func (sm *SpinnerManager) WaitForCompletion() {
-	sm.wg.Wait()
+	for _, s := range sm.spinners {
+		<-s.done
+	}
+	for _, s := range sm.spinners {
+		fmt.Println(s.Status)
+	}
+	showCursor()
 	time.Sleep(200 * time.Millisecond)
 }
