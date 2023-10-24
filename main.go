@@ -9,50 +9,56 @@ import (
 )
 
 func main() {
-	sm := spinner.NewGroup()
 
-	sp1 := sm.NewSpinner("Task 1", "Done 1")
-	sp2 := sm.NewSpinner("Task 2", "Done 2")
-	sp3 := sm.NewSpinner("Task 3", "Done 3")
-	sp4 := sm.NewSpinner("Task 4", "Done 4")
+	fmt.Println("This is an example")
 
-	sm.StartGroup()
+	for i := 0; i < 3; i++ {
 
-	var wg sync.WaitGroup
+		sm := spinner.NewGroup()
 
-	wg.Add(4) // As there are 4 tasks
+		sp1 := sm.NewSpinner("Task 1", "Done 1")
+		sp2 := sm.NewSpinner("Task 2", "Done 2")
+		sp3 := sm.NewSpinner("Task 3", "Done 3")
+		sp4 := sm.NewSpinner("Task 4", "Done 4")
 
-	// Simulate tasks with random durations
-	go func() {
-		defer wg.Done()
-		time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-		sp1.Stop()
-	}()
+		sm.StartGroup()
 
-	go func() {
-		defer wg.Done()
-		time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-		sp2.StopWithStatus("success")
-	}()
+		var wg sync.WaitGroup
 
-	go func() {
-		defer wg.Done()
-		time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-		sp3.StopWithStatus("failure")
-	}()
+		wg.Add(4) // As there are 4 tasks
 
-	go func() {
-		defer wg.Done()
-		time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-		sp4.StopWithStatus("disruption")
-	}()
+		// Simulate tasks with random durations
+		go func() {
+			defer wg.Done()
+			time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+			sp1.Stop()
+		}()
 
-	// Wait for all tasks to complete
-	wg.Wait()
+		go func() {
+			defer wg.Done()
+			time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+			sp2.StopWithStatus("success")
+		}()
 
-	// Stop the spinner group display
-	sm.StopGroup()
+		go func() {
+			defer wg.Done()
+			time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+			sp3.StopWithStatus("failure")
+		}()
 
-	fmt.Println("Some terminal output")
-	fmt.Println("Now we go again")
+		go func() {
+			defer wg.Done()
+			time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+			sp4.StopWithStatus("disruption")
+		}()
+
+		// Wait for all tasks to complete
+		wg.Wait()
+
+		// Stop the spinner group display
+		sm.StopGroup()
+
+		fmt.Println("Some terminal output")
+		fmt.Println("Now we go again")
+	}
 }
