@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"spinner/pkg/term"
+	"github.com/drew-mcl/spinner/pkg/term"
 )
 
 type SpinnerManager struct {

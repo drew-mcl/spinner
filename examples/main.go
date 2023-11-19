@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"spinner/spinner"
+	"github.com/drew-mcl/spinner"
 )
 
 func main() {

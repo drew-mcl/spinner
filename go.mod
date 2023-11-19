@@ -1,4 +1,4 @@
-module spinner
+module github.com/drew-mcl/spinner
 
 go 1.20
 
