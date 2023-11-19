@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
-	"spinner/pkg/spinner" // replace with the correct import path
+	"math/rand" // replace with the correct import path
+	"spinner/pkg/spinner"
 	"sync"
 	"time"
 )
@@ -51,6 +51,11 @@ func main() {
 			time.Sleep(time.Second * time.Duration(rand.Intn(5)))
 			sp4.StopWithStatus("disruption")
 		}()
+
+		time.Sleep(time.Millisecond * 400)
+
+		// Disrupt all spinners
+		sm.DisruptAllSpinners()
 
 		// Wait for all tasks to complete
 		wg.Wait()
