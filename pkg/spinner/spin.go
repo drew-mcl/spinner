@@ -9,14 +9,15 @@ import (
 )
 
 type SpinnerManager struct {
-	spinners []*Spinner
-	mu       sync.Mutex
-	started  bool
-	wg       sync.WaitGroup
-	doneCh   chan bool // To signal when all spinners are done
-	quit     chan bool // To signal the updating goroutine to stop
-	ctx      context.Context
-	cancel   context.CancelFunc
+	spinners          []*Spinner
+	mu                sync.Mutex
+	started           bool
+	wg                sync.WaitGroup
+	doneCh            chan bool // To signal when all spinners are done
+	quit              chan bool // To signal the updating goroutine to stop
+	ctx               context.Context
+	cancel            context.CancelFunc
+	disruptionMessage string
 }
 
 func NewGroup() *SpinnerManager {
@@ -30,7 +31,13 @@ func NewGroup() *SpinnerManager {
 }
 
 func (sm *SpinnerManager) NewSpinner(msg, doneMsg string) *Spinner {
-	sp := NewSpinner(msg, doneMsg, sm.ctx)
+	sp := &Spinner{
+		spinChars: []string{"◐", "◓", "◑", "◒"},
+		Msg:       msg,
+		DoneMsg:   doneMsg,
+		ctx:       sm.ctx,
+		manager:   sm,
+	}
 	sm.mu.Lock()
 	sm.spinners = append(sm.spinners, sp)
 	sm.mu.Unlock()
@@ -48,7 +55,11 @@ func (sm *SpinnerManager) NewSpinner(msg, doneMsg string) *Spinner {
 	return sp
 }
 
-func (sm *SpinnerManager) DisruptAllSpinners() {
+func (sm *SpinnerManager) DisruptAllSpinners(disruptionMessage string) {
+	sm.mu.Lock()
+	sm.disruptionMessage = disruptionMessage
+	sm.mu.Unlock()
+
 	sm.cancel() // Cancels the manager's context
 }
 
@@ -102,4 +113,15 @@ func (sm *SpinnerManager) StopGroup() {
 	time.Sleep(300 * time.Millisecond) // Sleep to allow the last update
 	sm.quit <- true                    // Signal to stop updating spinners
 	term.ShowCursor()
+}
+
+func (sm *SpinnerManager) DisruptAllNotCompleted(customMsg string) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	for _, spinner := range sm.spinners {
+		if spinner.active {
+			spinner.StopWithStatus("disruption", customMsg)
+		}
+	}
 }

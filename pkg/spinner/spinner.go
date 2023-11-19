@@ -19,6 +19,7 @@ type Spinner struct {
 	stopCh    chan struct{}
 	ctx       context.Context
 	cancel    context.CancelFunc
+	manager   *SpinnerManager
 }
 
 func NewSpinner(msg, doneMsg string, ctx context.Context) *Spinner {
@@ -44,7 +45,7 @@ func (s *Spinner) Start() {
 			case <-s.stopCh:
 				return
 			case <-s.ctx.Done():
-				s.StopWithStatus("disruption")
+				s.StopWithStatus("disruption", s.manager.disruptionMessage)
 				return
 			default:
 				s.mu.Lock()
@@ -78,7 +79,7 @@ func (s *Spinner) Stop() {
 
 }
 
-func (s *Spinner) StopWithStatus(status string) {
+func (s *Spinner) StopWithStatus(status, customMsg string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -87,28 +88,23 @@ func (s *Spinner) StopWithStatus(status string) {
 	}
 
 	s.active = false
-	s.Status = ""
-
-	var symbol string
-
-	gray := color.New(color.FgBlack).Add(color.Faint).SprintFunc()
+	var message string
 
 	switch status {
 	case "success":
-		symbol = color.New(color.FgGreen).Sprint("✔")
+		message = fmt.Sprintf("%s %s", color.New(color.FgGreen).Sprint("✔"), customMsg)
 	case "failure":
-		symbol = color.New(color.FgRed).Sprint("✘")
+		message = fmt.Sprintf("%s %s", color.New(color.FgRed).Sprint("✘"), customMsg)
 	case "disruption":
-		symbol = color.New(color.FgYellow).Sprint("!")
+		message = fmt.Sprintf("%s %s", color.New(color.FgYellow).Sprint("!"), customMsg)
 	case "done":
-		symbol = gray("✔")
+		message = fmt.Sprintf("%s %s", color.New(color.FgBlack).Add(color.Faint).Sprint("✔"), customMsg)
 	default:
-		symbol = gray("?")
+		message = fmt.Sprintf("%s %s", color.New(color.FgBlack).Add(color.Faint).Sprint("?"), customMsg)
 	}
 
-	s.Status = fmt.Sprintf("%s %s", symbol, gray(s.DoneMsg))
+	s.Status = message
 
-	//To ensure there is no panic if StopWithStatus is called before Start
 	if s.stopCh != nil {
 		close(s.stopCh)
 		s.stopCh = nil

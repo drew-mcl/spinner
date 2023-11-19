@@ -37,25 +37,25 @@ func main() {
 		go func() {
 			defer wg.Done()
 			time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-			sp2.StopWithStatus("success")
+			sp2.StopWithStatus("success", "Success")
 		}()
 
 		go func() {
 			defer wg.Done()
 			time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-			sp3.StopWithStatus("failure")
+			sp3.StopWithStatus("failure", "Failed")
 		}()
 
 		go func() {
 			defer wg.Done()
 			time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-			sp4.StopWithStatus("disruption")
+			sp4.StopWithStatus("disruption", "Disrupted")
 		}()
 
-		time.Sleep(time.Millisecond * 400)
+		time.Sleep(time.Millisecond * 1000)
 
 		// Disrupt all spinners
-		sm.DisruptAllSpinners()
+		sm.DisruptAllSpinners("context cancelled")
 
 		// Wait for all tasks to complete
 		wg.Wait()
