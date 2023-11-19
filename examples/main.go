@@ -17,10 +17,10 @@ func main() {
 
 		sm := spinner.NewGroup()
 
-		sp1 := sm.NewSpinner("Task 1", "Done 1")
-		sp2 := sm.NewSpinner("Task 2", "Done 2")
-		sp3 := sm.NewSpinner("Task 3", "Done 3")
-		sp4 := sm.NewSpinner("Task 4", "Done 4")
+		sp1 := sm.NewSpinner("Task 1", "Done 1", "spinner1")
+		sp2 := sm.NewSpinner("Task 2", "Done 2", "spinner2")
+		sp3 := sm.NewSpinner("Task 3", "Done 3", "spinner3")
+		sp4 := sm.NewSpinner("Task 4", "Done 4", "spinner4")
 
 		sm.StartGroup()
 

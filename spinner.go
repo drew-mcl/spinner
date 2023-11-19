@@ -20,6 +20,7 @@ type Spinner struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	manager   *SpinnerManager
+	Name      string
 }
 
 func NewSpinner(msg, doneMsg string, ctx context.Context) *Spinner {

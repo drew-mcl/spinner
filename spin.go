@@ -19,28 +19,32 @@ type SpinnerManager struct {
 	ctx               context.Context
 	cancel            context.CancelFunc
 	disruptionMessage string
+	spinnerMap        map[string]*Spinner
 }
 
 func NewGroup() *SpinnerManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &SpinnerManager{
-		quit:   make(chan bool),
-		doneCh: make(chan bool),
-		ctx:    ctx,
-		cancel: cancel,
+		quit:       make(chan bool),
+		doneCh:     make(chan bool),
+		ctx:        ctx,
+		cancel:     cancel,
+		spinnerMap: make(map[string]*Spinner),
 	}
 }
 
-func (sm *SpinnerManager) NewSpinner(msg, doneMsg string) *Spinner {
+func (sm *SpinnerManager) NewSpinner(msg, doneMsg, name string) *Spinner {
 	sp := &Spinner{
 		spinChars: []string{"◐", "◓", "◑", "◒"},
 		Msg:       msg,
 		DoneMsg:   doneMsg,
 		ctx:       sm.ctx,
 		manager:   sm,
+		Name:      name,
 	}
 	sm.mu.Lock()
 	sm.spinners = append(sm.spinners, sp)
+	sm.spinnerMap[name] = sp
 	sm.mu.Unlock()
 
 	go func() {
@@ -54,6 +58,16 @@ func (sm *SpinnerManager) NewSpinner(msg, doneMsg string) *Spinner {
 	}()
 
 	return sp
+}
+
+// FindSpinner retrieves a spinner by its name
+func (sm *SpinnerManager) FindSpinner(name string) *Spinner {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	if sp, ok := sm.spinnerMap[name]; ok {
+		return sp
+	}
+	return nil // or handle the case where the spinner is not found
 }
 
 func (sm *SpinnerManager) DisruptAllSpinners(disruptionMessage string) {
