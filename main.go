@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	"math/rand" // replace with the correct import path
-	"spinner/pkg/spinner"
 	"sync"
 	"time"
+
+	"spinner/spinner"
 )
 
 func main() {

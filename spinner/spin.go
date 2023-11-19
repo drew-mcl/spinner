@@ -3,9 +3,10 @@ package spinner
 import (
 	"context"
 	"fmt"
-	"spinner/pkg/term"
 	"sync"
 	"time"
+
+	"spinner/pkg/term"
 )
 
 type SpinnerManager struct {
